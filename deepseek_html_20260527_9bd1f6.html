@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>KaraoKwa – Voix Android Réparée</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: linear-gradient(145deg, #0a0f1e 0%, #0c1222 100%);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: #f0f3fa;
+      padding: 1.5rem;
+    }
+    .app-container { max-width: 1300px; margin: 0 auto; }
+    h1 {
+      text-align: center;
+      font-size: 2rem;
+      background: linear-gradient(135deg, #FFB347, #FF6B6B, #A855F7);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin-bottom: 1rem;
+    }
+    .grid-2cols {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    @media (max-width: 800px) { .grid-2cols { grid-template-columns: 1fr; } }
+    .card {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      border-radius: 1.5rem;
+      padding: 1.2rem;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .card h2 {
+      font-size: 1.4rem;
+      margin-bottom: 1rem;
+      border-left: 4px solid #4facfe;
+      padding-left: 0.8rem;
+    }
+    .wheel-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    canvas {
+      width: 280px;
+      height: 280px;
+      border-radius: 50%;
+      box-shadow: 0 0 0 6px #1e293b, 0 10px 25px black;
+      cursor: pointer;
+      background: #0f172a;
+    }
+    .spin-btn {
+      background: linear-gradient(95deg, #4facfe, #00f2fe);
+      margin-top: 1rem;
+      padding: 0.7rem;
+      font-size: 1.2rem;
+      border-radius: 3rem;
+      font-weight: bold;
+      width: 100%;
+      border: none;
+      color: white;
+      cursor: pointer;
+      box-shadow: 0 4px 0 #0e5c8a;
+    }
+    .spin-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #0e5c8a; }
+    .result {
+      background: rgba(0,0,0,0.6);
+      padding: 0.7rem;
+      border-radius: 2rem;
+      text-align: center;
+      margin: 1rem 0;
+      font-weight: bold;
+      border: 1px solid #4facfe;
+    }
+    .joueurs-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.8rem;
+    }
+    .joueur {
+      background: #1e293b;
+      padding: 0.3rem 0.8rem;
+      border-radius: 2rem;
+      font-size: 0.8rem;
+      border: 1px solid #4facfe;
+    }
+    .playlist-container {
+      max-height: 260px;
+      overflow-y: auto;
+      margin: 0.8rem 0;
+    }
+    .playlist-item {
+      background: rgba(10,15,30,0.7);
+      border-radius: 1rem;
+      padding: 0.6rem;
+      margin-bottom: 0.5rem;
+      border-left: 4px solid #4facfe;
+      cursor: pointer;
+    }
+    .playlist-item.active {
+      border-left-color: #00f2fe;
+      background: #1e2a44;
+    }
+    .playlist-info {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      font-size: 0.8rem;
+    }
+    .playlist-actions button {
+      background: #2d3a5e;
+      border: none;
+      padding: 0.2rem 0.5rem;
+      border-radius: 1rem;
+      margin-top: 0.3rem;
+      margin-right: 0.5rem;
+      color: white;
+      cursor: pointer;
+    }
+    .filters {
+      display: flex;
+      gap: 0.8rem;
+      margin-bottom: 0.8rem;
+      flex-wrap: wrap;
+    }
+    .filters input {
+      flex: 1;
+      background: #1e293b;
+      padding: 0.4rem;
+      border-radius: 2rem;
+      border: 1px solid #334155;
+      color: white;
+    }
+    button {
+      background: #2d3a5e;
+      padding: 0.5rem 1rem;
+      border-radius: 1.2rem;
+      border: none;
+      font-weight: 500;
+      cursor: pointer;
+      color: white;
+    }
+    .primary {
+      background: linear-gradient(95deg, #4facfe, #00f2fe);
+    }
+    video {
+      width: 100%;
+      border-radius: 1rem;
+      background: black;
+      aspect-ratio: 16/9;
+    }
+    .status {
+      background: rgba(0,0,0,0.6);
+      padding: 0.6rem;
+      border-radius: 2rem;
+      text-align: center;
+      margin-top: 0.8rem;
+      font-size: 0.85rem;
+    }
+    .row-flex {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+    }
+    input, select {
+      background: #1e293b;
+      border: 1px solid #334155;
+      padding: 0.5rem;
+      border-radius: 1rem;
+      color: white;
+      flex: 1;
+    }
+    hr {
+      margin: 1rem 0;
+      border-color: #334155;
+    }
+    footer {
+      text-align: center;
+      font-size: 0.7rem;
+      margin-top: 1.5rem;
+      color: #aaa;
+    }
+    .voice-test {
+      background: #2d3a5e;
+      border-radius: 2rem;
+      padding: 0.3rem 0.8rem;
+      font-size: 0.8rem;
+      margin-top: 0.5rem;
+      cursor: pointer;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+<div class="app-container">
+  <h1>🎤 KaraoKwa • Voix Android OK</h1>
+  <div class="grid-2cols">
+    <div class="card">
+      <h2>🎡 Roue des stars</h2>
+      <div class="wheel-area">
+        <canvas id="wheelCanvas" width="500" height="500"></canvas>
+        <button id="spinBtn" class="spin-btn">🌀 LANCER LA ROUE (10s) 🌀</button>
+        <div id="resultDisplay" class="result">Clique sur la roue</div>
+        <div class="joueurs-list" id="joueursList"></div>
+        <div style="text-align:center; margin-top:0.5rem;">
+          <span id="testVoiceBtn" class="voice-test">🔊 Tester la voix (André)</span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>🎬 Karaoké</h2>
+      <video id="videoPlayer" controls></video>
+      <div id="playerStatus" class="status">Aucune chanson</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📀 Ma bibliothèque MP4 (paroles incluses)</h2>
+    <div class="filters">
+      <input type="text" id="filterGenre" placeholder="Genre">
+      <input type="text" id="filterPeriode" placeholder="Période">
+      <button id="clearFilters">Reset</button>
+    </div>
+    <div id="playlistContainer" class="playlist-container"></div>
+
+    <div class="row-flex">
+      <input type="file" id="fileInput" accept="video/mp4" multiple>
+      <button id="addFilesBtn">📂 Ajouter plusieurs MP4</button>
+    </div>
+    <div class="row-flex">
+      <input type="url" id="remoteUrl" placeholder="https://... .mp4">
+      <input type="text" id="remoteGenre" placeholder="Genre">
+      <input type="text" id="remotePeriode" placeholder="Période">
+      <button id="addRemoteBtn" class="primary">🌐 Ajouter URL</button>
+    </div>
+    <hr>
+    <div class="row-flex">
+      <button id="saveZipBtn" class="primary">💾 Sauvegarder TOUT (ZIP complet)</button>
+      <button id="exportJsonBtn">📄 Exporter métadonnées</button>
+      <button id="importZipBtn">📂 Importer un ZIP (MP4+JSON)</button>
+      <input type="file" id="zipInput" accept=".zip" style="display:none;">
+    </div>
+    <div id="saveStatus" class="status">Prêt – Persistance automatique (IndexedDB)</div>
+  </div>
+  <footer>✅ Voix réparée pour Android : utilise la sélection explicite de voix française. Cliquez sur "Tester la voix" si besoin.</footer>
+</div>
+
+<script>
+  // ---------- LISTE DES JOUEURS ----------
+  const JOUEURS = ["Enzo","Lola","Robert","Josiane","Driss","Adam","Stephanie","Salim","Emma","Telio","Marlone","Larsène","Christelle"];
+  const COLORS = ["#FF4D6D","#4ECDC4","#FFD166","#06D6A0","#118AB2","#EF476F","#FFB703","#8D99AE","#2B2D42","#F25F5C","#247BA0","#70C1B3","#FF9F1C"];
+
+  // ---------- PERSISTANCE IndexedDB (identique) ----------
+  const DB_NAME = "KaraokeDB";
+  const DB_VERSION = 1;
+  const STORE_NAME = "songs";
+  let db = null;
+
+  let playlist = [];
+  let nextId = 1;
+  let currentVideoId = null;
+  let spinning = false;
+  let currentAngle = 0;
+  let animFrame = null;
+  let audioCtx = null;
+  let musicInterval = null;
+  let spotInterval = null;
+
+  // Éléments DOM
+  const wheelCanvas = document.getElementById('wheelCanvas');
+  const spinBtn = document.getElementById('spinBtn');
+  const resultDisplay = document.getElementById('resultDisplay');
+  const videoPlayer = document.getElementById('videoPlayer');
+  const playerStatus = document.getElementById('playerStatus');
+  const playlistContainer = document.getElementById('playlistContainer');
+  const filterGenre = document.getElementById('filterGenre');
+  const filterPeriode = document.getElementById('filterPeriode');
+  const clearFilters = document.getElementById('clearFilters');
+  const fileInput = document.getElementById('fileInput');
+  const addFilesBtn = document.getElementById('addFilesBtn');
+  const remoteUrl = document.getElementById('remoteUrl');
+  const remoteGenre = document.getElementById('remoteGenre');
+  const remotePeriode = document.getElementById('remotePeriode');
+  const addRemoteBtn = document.getElementById('addRemoteBtn');
+  const saveZipBtn = document.getElementById('saveZipBtn');
+  const exportJsonBtn = document.getElementById('exportJsonBtn');
+  const importZipBtn = document.getElementById('importZipBtn');
+  const zipInput = document.getElementById('zipInput');
+  const saveStatus = document.getElementById('saveStatus');
+  const joueursListDiv = document.getElementById('joueursList');
+  const testVoiceBtn = document.getElementById('testVoiceBtn');
+
+  // ---------- SYNTHÈSE VOCALE CORRIGÉE POUR ANDROID ----------
+  let currentVoice = null;
+  let voicesLoaded = false;
+
+  function loadVoices() {
+    return new Promise((resolve) => {
+      if (voicesLoaded) return resolve();
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length > 0) {
+        // Chercher une voix française
+        const frenchVoice = voices.find(v => v.lang.startsWith('fr') || v.lang === 'fr-FR');
+        currentVoice = frenchVoice || voices[0];
+        voicesLoaded = true;
+        resolve();
+      } else {
+        // Attendre l'événement voiceschanged
+        window.speechSynthesis.onvoiceschanged = () => {
+          const newVoices = window.speechSynthesis.getVoices();
+          const french = newVoices.find(v => v.lang.startsWith('fr'));
+          currentVoice = french || newVoices[0];
+          voicesLoaded = true;
+          resolve();
+        };
+      }
+    });
+  }
+
+  // Fonction d'annonce vocale fiable
+  async function speakText(text) {
+    if (!window.speechSynthesis) {
+      console.warn("SpeechSynthesis non supporté");
+      return;
+    }
+    await loadVoices();
+    // Annuler toute parole en cours pour éviter les conflits
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'fr-FR';
+    utterance.rate = 0.9;
+    utterance.pitch = 1.0;
+    if (currentVoice) utterance.voice = currentVoice;
+    // Sur Android, parfois il faut un délai
+    setTimeout(() => {
+      window.speechSynthesis.speak(utterance);
+    }, 100);
+  }
+
+  // Test vocal manuel
+  testVoiceBtn.addEventListener('click', async () => {
+    await speakText("André, à toi de chanter !");
+  });
+
+  // ---------- Fonctions IndexedDB ----------
+  function openDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        db = request.result;
+        resolve(db);
+      };
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: "id" });
+        }
+      };
+    });
+  }
+
+  async function saveSongToDB(song) {
+    if (!db) await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      const store = tx.objectStore(STORE_NAME);
+      const request = store.put(song);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async function deleteSongFromDB(id) {
+    if (!db) await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      const store = tx.objectStore(STORE_NAME);
+      const request = store.delete(id);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async function loadAllSongsFromDB() {
+    if (!db) await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const store = tx.objectStore(STORE_NAME);
+      const request = store.getAll();
+      request.onsuccess = () => {
+        const items = request.result;
+        for (let item of items) {
+          if (item.type === 'blob' && item.blobData) {
+            item.blob = new Blob([item.blobData], { type: 'video/mp4' });
+            delete item.blobData;
+          }
+        }
+        resolve(items);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // ---------- Gestion playlist avec persistance ----------
+  async function addSong(name, type, genre, periode, url = null, blob = null) {
+    const id = nextId++;
+    let song = { id, name, genre: genre || "Indéfini", periode: periode || "Indéfini", type };
+    if (type === 'blob' && blob) {
+      const buffer = await blob.arrayBuffer();
+      song.blobData = buffer;
+      song.blob = blob;
+    } else if (type === 'url' && url) {
+      song.url = url;
+    }
+    playlist.push(song);
+    await saveSongToDB(song);
+    renderPlaylist();
+  }
+
+  async function deleteSongById(id) {
+    const index = playlist.findIndex(s => s.id === id);
+    if (index !== -1) {
+      playlist.splice(index, 1);
+      await deleteSongFromDB(id);
+      if (currentVideoId === id) {
+        videoPlayer.pause();
+        videoPlayer.src = "";
+        currentVideoId = null;
+        playerStatus.innerText = "Chanson supprimée";
+      }
+      renderPlaylist();
+    }
+  }
+
+  async function loadPlaylistFromDB() {
+    const items = await loadAllSongsFromDB();
+    if (items.length) {
+      const maxId = items.reduce((max, item) => Math.max(max, item.id), 0);
+      nextId = maxId + 1;
+      playlist = items;
+    } else {
+      playlist = [];
+      nextId = 1;
+    }
+    renderPlaylist();
+  }
+
+  // ---------- Dessin roue ----------
+  function drawWheel(rotation = 0) {
+    const canvas = wheelCanvas;
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.height = 500;
+    const cx = 250, cy = 250;
+    const radius = 220;
+    const angleStep = (Math.PI * 2) / JOUEURS.length;
+    ctx.clearRect(0, 0, 500, 500);
+    ctx.fillStyle = "#0a0f1a";
+    ctx.fillRect(0, 0, 500, 500);
+    for (let i = 0; i < JOUEURS.length; i++) {
+      const start = i * angleStep + rotation;
+      const end = (i+1) * angleStep + rotation;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, radius, start, end);
+      ctx.fillStyle = COLORS[i % COLORS.length];
+      ctx.fill();
+      ctx.strokeStyle = "#fff3";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(start + angleStep/2);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = "bold 18px 'Segoe UI'";
+      let name = JOUEURS[i].length > 9 ? JOUEURS[i].substring(0,8)+"…" : JOUEURS[i];
+      ctx.shadowBlur = 4;
+      ctx.fillStyle = "white";
+      ctx.fillText(name, radius * 0.7, 6);
+      ctx.restore();
+    }
+    ctx.beginPath();
+    ctx.arc(cx, cy, 40, 0, 2*Math.PI);
+    ctx.fillStyle = "#1e293b";
+    ctx.fill();
+    ctx.strokeStyle = "#4facfe";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.fillStyle = "#00f2fe";
+    ctx.font = "bold 30px sans-serif";
+    ctx.fillText("🎤", cx-16, cy+10);
+    ctx.beginPath();
+    ctx.moveTo(cx + radius + 10, cy);
+    ctx.lineTo(cx + radius + 35, cy-12);
+    ctx.lineTo(cx + radius + 35, cy+12);
+    ctx.fillStyle = "#4facfe";
+    ctx.fill();
+  }
+
+  function getPlayerIndex(rot) {
+    let raw = (0 - rot + 2*Math.PI) % (2*Math.PI);
+    let step = (2*Math.PI) / JOUEURS.length;
+    return Math.floor(raw / step) % JOUEURS.length;
+  }
+
+  // ---------- Musique électro (identique) ----------
+  function initAudio() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+  function playKick(when, vol=0.3) {
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(vol, now+when);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now+when+0.2);
+    gain.connect(audioCtx.destination);
+    const osc = audioCtx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.value = 60;
+    osc.connect(gain);
+    osc.start(now+when);
+    osc.stop(now+when+0.2);
+    setTimeout(()=>{ try{ osc.disconnect(); gain.disconnect(); }catch(e){} },500);
+  }
+  function playClap(when, vol=0.25) {
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(vol, now+when);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now+when+0.12);
+    gain.connect(audioCtx.destination);
+    const noise = audioCtx.createBufferSource();
+    const buffer = audioCtx.createBuffer(1,4096,audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let i=0;i<4096;i++) data[i]=Math.random()*2-1;
+    noise.buffer = buffer;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.value = 1500;
+    noise.connect(filter);
+    filter.connect(gain);
+    noise.start(now+when);
+    noise.stop(now+when+0.1);
+    setTimeout(()=>{ try{ noise.disconnect(); filter.disconnect(); gain.disconnect(); }catch(e){} },500);
+  }
+  function playHiHat(when, vol=0.12) {
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(vol, now+when);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now+when+0.06);
+    gain.connect(audioCtx.destination);
+    const noise = audioCtx.createBufferSource();
+    const buffer = audioCtx.createBuffer(1,2048,audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let i=0;i<2048;i++) data[i]=Math.random()*2-1;
+    noise.buffer = buffer;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = "highpass";
+    filter.frequency.value = 5000;
+    noise.connect(filter);
+    filter.connect(gain);
+    noise.start(now+when);
+    noise.stop(now+when+0.05);
+    setTimeout(()=>{ try{ noise.disconnect(); filter.disconnect(); gain.disconnect(); }catch(e){} },500);
+  }
+  function playLead(when, vol=0.15) {
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(vol, now+when);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now+when+0.2);
+    gain.connect(audioCtx.destination);
+    const osc = audioCtx.createOscillator();
+    osc.type = "square";
+    osc.frequency.value = 440;
+    osc.connect(gain);
+    osc.start(now+when);
+    osc.stop(now+when+0.15);
+    setTimeout(()=>{ try{ osc.disconnect(); gain.disconnect(); }catch(e){} },500);
+  }
+
+  let musicTimer = null;
+  function startMusic() {
+    if (musicTimer) return;
+    if (!audioCtx) return;
+    let step = 0;
+    const intervalMs = 117;
+    musicTimer = setInterval(() => {
+      if (!spinning) return;
+      const beat = step % 16;
+      if (beat===0||beat===4||beat===8||beat===12) playKick(0,0.35);
+      if (beat===4||beat===12) playClap(0.02,0.28);
+      if (beat%2===0) playHiHat(0,0.12);
+      if (beat===0||beat===8) playLead(0.03,0.18);
+      step++;
+    }, intervalMs);
+  }
+  function stopMusic() { if (musicTimer) { clearInterval(musicTimer); musicTimer = null; } }
+
+  // Spots lumineux
+  function startSpots() {
+    if (spotInterval) clearInterval(spotInterval);
+    if (!document.querySelector('.spot-left')) {
+      const style = document.createElement('style');
+      style.textContent = `
+        .spot-left, .spot-right {
+          position: fixed;
+          top: 50%;
+          width: 200px;
+          height: 200px;
+          border-radius: 50%;
+          filter: blur(60px);
+          opacity: 0.6;
+          pointer-events: none;
+          z-index: 0;
+        }
+        .spot-left { left: -80px; transform: translateY(-50%); background: radial-gradient(circle, #ff4d4d, transparent); }
+        .spot-right { right: -80px; transform: translateY(-50%); background: radial-gradient(circle, #4d4dff, transparent); }
+      `;
+      document.head.appendChild(style);
+      const left = document.createElement('div'); left.className = 'spot-left';
+      const right = document.createElement('div'); right.className = 'spot-right';
+      document.body.appendChild(left);
+      document.body.appendChild(right);
+    }
+    spotInterval = setInterval(() => {
+      const left = document.querySelector('.spot-left');
+      const right = document.querySelector('.spot-right');
+      if (left && right) {
+        const hue = (Date.now() * 0.2) % 360;
+        left.style.background = `radial-gradient(circle, hsl(${hue}, 100%, 65%), transparent)`;
+        right.style.background = `radial-gradient(circle, hsl(${hue+180}, 100%, 65%), transparent)`;
+      }
+    }, 200);
+  }
+  function stopSpots() {
+    if (spotInterval) clearInterval(spotInterval);
+    const left = document.querySelector('.spot-left');
+    const right = document.querySelector('.spot-right');
+    if (left) left.style.background = 'radial-gradient(circle, #ff4d4d, transparent)';
+    if (right) right.style.background = 'radial-gradient(circle, #4d4dff, transparent)';
+  }
+
+  // ---------- ANIMATION ROUE 10s + VOIX FONCTIONNELLE ----------
+  function spinWheel() {
+    if (spinning) return;
+    spinning = true;
+    initAudio();
+    startMusic();
+    startSpots();
+    const duration = 10000;
+    const startTime = performance.now();
+    const startRot = currentAngle;
+    const turns = 6 + Math.random() * 4;
+    const delta = turns * 2 * Math.PI + Math.random() * 2 * Math.PI;
+    function animate(now) {
+      const elapsed = now - startTime;
+      let t = Math.min(1, elapsed / duration);
+      const ease = 1 - Math.pow(1-t, 3);
+      const newRot = startRot + delta * ease;
+      currentAngle = newRot % (2*Math.PI);
+      drawWheel(currentAngle);
+      if (t < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        spinning = false;
+        stopMusic();
+        stopSpots();
+        const idx = getPlayerIndex(currentAngle);
+        const player = JOUEURS[idx];
+        resultDisplay.innerHTML = `🎉✨ <strong>${player}</strong> va chanter ! ✨🎉`;
+        // Utilisation de la voix corrigée
+        speakText(`${player}, à toi de chanter !`);
+        pickRandomSong(player);
+      }
+    }
+    requestAnimationFrame(animate);
+  }
+
+  // Sélection aléatoire d'une chanson
+  async function pickRandomSong(player) {
+    if (playlist.length === 0) {
+      playerStatus.innerText = "❌ Aucune chanson dans la playlist. Ajoutez des MP4 !";
+      return;
+    }
+    const randomIndex = Math.floor(Math.random() * playlist.length);
+    const song = playlist[randomIndex];
+    let src = null;
+    if (song.type === 'blob' && song.blob) {
+      if (videoPlayer.src && videoPlayer.src.startsWith('blob:')) URL.revokeObjectURL(videoPlayer.src);
+      src = URL.createObjectURL(song.blob);
+    } else if (song.type === 'url' && song.url) {
+      src = song.url;
+    }
+    if (src) {
+      videoPlayer.src = src;
+      videoPlayer.load();
+      videoPlayer.play().catch(e => console.log("auto-play bloqué"));
+      currentVideoId = song.id;
+      playerStatus.innerText = `🎲 Chanson aléatoire : "${song.name}" pour ${player}`;
+      renderPlaylist();
+    } else {
+      playerStatus.innerText = `❌ Impossible de lire "${song.name}"`;
+    }
+    try {
+      await downloadSong(song);
+      playerStatus.innerText = `✅ ${player} au micro ! "${song.name}" téléchargé (paroles incluses) 🎤`;
+    } catch(e) {
+      playerStatus.innerText = `⚠️ Téléchargement indirect, mais ${player} chante sur "${song.name}" !`;
+    }
+    setTimeout(() => {
+      if (playerStatus.innerText.includes(player))
+        playerStatus.innerText = `🎶 Dernier tour : ${player} - ${song.name}`;
+    }, 5000);
+  }
+
+  async function downloadSong(song) {
+    if (!song) return;
+    let filename = song.name;
+    if (!filename.endsWith('.mp4')) filename += '.mp4';
+    if (song.type === 'blob' && song.blob) {
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(song.blob);
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    } else if (song.type === 'url' && song.url) {
+      window.open(song.url, '_blank');
+    }
+  }
+
+  // ---------- Gestion playlist et rendu ----------
+  function getFilteredPlaylist() {
+    const g = filterGenre.value.trim().toLowerCase();
+    const p = filterPeriode.value.trim().toLowerCase();
+    return playlist.filter(item =>
+      (!g || (item.genre || "").toLowerCase().includes(g)) &&
+      (!p || (item.periode || "").toLowerCase().includes(p))
+    );
+  }
+
+  function renderPlaylist() {
+    const filtered = getFilteredPlaylist();
+    if (filtered.length === 0) {
+      playlistContainer.innerHTML = '<div style="text-align:center;padding:1rem;">🎵 Aucune vidéo</div>';
+      return;
+    }
+    playlistContainer.innerHTML = '';
+    filtered.forEach(item => {
+      const div = document.createElement('div');
+      div.className = `playlist-item ${currentVideoId === item.id ? 'active' : ''}`;
+      div.innerHTML = `
+        <div class="playlist-info">
+          <span>🎥 ${escapeHtml(item.name)}</span>
+          <span>🎸 ${item.genre || "N/C"} 📅 ${item.periode || "N/C"}</span>
+        </div>
+        <div class="playlist-actions">
+          <button data-id="${item.id}" data-action="play">▶️ Lire</button>
+          <button data-id="${item.id}" data-action="delete">🗑 Supprimer</button>
+        </div>
+      `;
+      playlistContainer.appendChild(div);
+    });
+    document.querySelectorAll('.playlist-actions button').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = parseInt(btn.dataset.id);
+        const action = btn.dataset.action;
+        if (action === 'play') playSongById(id);
+        if (action === 'delete') deleteSongById(id);
+      });
+    });
+    document.querySelectorAll('.playlist-item').forEach(el => {
+      el.addEventListener('click', (e) => {
+        if (e.target.tagName === 'BUTTON') return;
+        const playBtn = el.querySelector('[data-action="play"]');
+        if (playBtn) playSongById(parseInt(playBtn.dataset.id));
+      });
+    });
+  }
+
+  function playSongById(id) {
+    const song = playlist.find(s => s.id === id);
+    if (!song) return;
+    let src = null;
+    if (song.type === 'blob' && song.blob) {
+      if (videoPlayer.src && videoPlayer.src.startsWith('blob:')) URL.revokeObjectURL(videoPlayer.src);
+      src = URL.createObjectURL(song.blob);
+    } else if (song.type === 'url' && song.url) {
+      src = song.url;
+    }
+    if (src) {
+      videoPlayer.src = src;
+      videoPlayer.load();
+      videoPlayer.play().catch(e=>console.warn);
+      currentVideoId = song.id;
+      playerStatus.innerText = `🎬 En lecture : ${song.name}`;
+      renderPlaylist();
+    }
+  }
+
+  // ---------- Ajouts locaux et distants ----------
+  async function addLocalFiles(files) {
+    for (let file of files) {
+      if (file.type.includes('mp4') || file.name.endsWith('.mp4')) {
+        let genre = prompt(`Genre pour "${file.name}" ?`, "Karaoké");
+        let periode = prompt(`Période pour "${file.name}" ?`, "Années 2000");
+        await addSong(file.name, 'blob', genre, periode, null, file);
+      } else {
+        alert(`${file.name} n'est pas un MP4`);
+      }
+    }
+  }
+
+  function addRemoteVideo() {
+    let url = remoteUrl.value.trim();
+    if (!url) { alert("URL vide"); return; }
+    if (!url.match(/^https?:\/\//i)) { alert("URL doit commencer par http:// ou https://"); return; }
+    let name = url.split('/').pop() || "video.mp4";
+    if (!name.endsWith('.mp4')) name += '.mp4';
+    let genre = remoteGenre.value.trim() || "Divers";
+    let periode = remotePeriode.value.trim() || "Inconnue";
+    addSong(name, 'url', genre, periode, url, null);
+    remoteUrl.value = "";
+    remoteGenre.value = "";
+    remotePeriode.value = "";
+  }
+
+  // ---------- Sauvegarde ZIP ----------
+  async function saveFullBackup() {
+    const localSongs = playlist.filter(s => s.type === 'blob' && s.blob);
+    if (localSongs.length === 0) {
+      saveStatus.innerHTML = "⚠️ Aucun MP4 local à sauvegarder.";
+      return;
+    }
+    saveStatus.innerHTML = `📦 Création du ZIP avec ${localSongs.length} MP4...`;
+    const zip = new JSZip();
+    const metadata = [];
+    for (let song of localSongs) {
+      let filename = song.name;
+      if (!filename.endsWith('.mp4')) filename += '.mp4';
+      zip.file(filename, song.blob);
+      metadata.push({ filename, name: song.name, genre: song.genre, periode: song.periode });
+    }
+    zip.file("playlist.json", JSON.stringify(metadata, null, 2));
+    const content = await zip.generateAsync({ type: "blob" });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(content);
+    link.download = `karaoke_backup_${Date.now()}.zip`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    saveStatus.innerHTML = `✅ Sauvegarde réussie ! ${localSongs.length} MP4 + métadonnées.`;
+    setTimeout(() => saveStatus.innerHTML = "Prêt", 3000);
+  }
+
+  function exportMetadata() {
+    const data = playlist.map(s => ({ id: s.id, name: s.name, genre: s.genre, periode: s.periode, type: s.type, url: s.url || null }));
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `playlist_${Date.now()}.json`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    saveStatus.innerHTML = "📄 Métadonnées exportées (JSON)";
+  }
+
+  async function importZip(file) {
+    try {
+      const zip = await JSZip.loadAsync(file);
+      let meta = null;
+      if (zip.files["playlist.json"]) {
+        const metaContent = await zip.files["playlist.json"].async("string");
+        meta = JSON.parse(metaContent);
+      }
+      let count = 0;
+      for (let [filename, entry] of Object.entries(zip.files)) {
+        if (!entry.dir && filename.toLowerCase().endsWith('.mp4')) {
+          const blob = await entry.async('blob');
+          const name = filename.split('/').pop();
+          let genre = "Importé", periode = "Karaoké";
+          if (meta) {
+            const found = meta.find(m => m.filename === filename || m.name === name);
+            if (found) { genre = found.genre || genre; periode = found.periode || periode; }
+          }
+          await addSong(name, 'blob', genre, periode, null, blob);
+          count++;
+        }
+      }
+      if (count === 0 && !meta) throw new Error("Aucun MP4 trouvé");
+      saveStatus.innerHTML = `✅ Import réussi : ${count} MP4 restaurés.`;
+    } catch (err) {
+      console.error(err);
+      saveStatus.innerHTML = "❌ Échec de l'import : ZIP invalide.";
+    }
+  }
+
+  // ---------- INITIALISATION ----------
+  async function init() {
+    joueursListDiv.innerHTML = JOUEURS.map(j => `<div class="joueur">${j}</div>`).join('');
+    drawWheel(0);
+    await openDB();
+    await loadPlaylistFromDB();
+    // Précharger les voix (sans attendre)
+    loadVoices();
+    // Événements
+    spinBtn.addEventListener('click', spinWheel);
+    wheelCanvas.addEventListener('click', spinWheel);
+    clearFilters.addEventListener('click', () => {
+      filterGenre.value = '';
+      filterPeriode.value = '';
+      renderPlaylist();
+    });
+    filterGenre.addEventListener('input', renderPlaylist);
+    filterPeriode.addEventListener('input', renderPlaylist);
+    addFilesBtn.addEventListener('click', () => {
+      if (fileInput.files.length) addLocalFiles(fileInput.files);
+      fileInput.value = '';
+    });
+    addRemoteBtn.addEventListener('click', addRemoteVideo);
+    saveZipBtn.addEventListener('click', saveFullBackup);
+    exportJsonBtn.addEventListener('click', exportMetadata);
+    importZipBtn.addEventListener('click', () => zipInput.click());
+    zipInput.addEventListener('change', async (e) => {
+      if (e.target.files.length) await importZip(e.target.files[0]);
+      zipInput.value = '';
+    });
+    window.addEventListener('beforeunload', () => {
+      if (videoPlayer.src && videoPlayer.src.startsWith('blob:')) URL.revokeObjectURL(videoPlayer.src);
+      if (audioCtx) audioCtx.close();
+    });
+    if (!document.querySelector('.spot-left')) {
+      const style = document.createElement('style');
+      style.textContent = `
+        .spot-left, .spot-right {
+          position: fixed;
+          top: 50%;
+          width: 200px;
+          height: 200px;
+          border-radius: 50%;
+          filter: blur(60px);
+          opacity: 0.6;
+          pointer-events: none;
+          z-index: 0;
+        }
+        .spot-left { left: -80px; transform: translateY(-50%); background: radial-gradient(circle, #ff4d4d, transparent); }
+        .spot-right { right: -80px; transform: translateY(-50%); background: radial-gradient(circle, #4d4dff, transparent); }
+      `;
+      document.head.appendChild(style);
+      const left = document.createElement('div'); left.className = 'spot-left';
+      const right = document.createElement('div'); right.className = 'spot-right';
+      document.body.appendChild(left);
+      document.body.appendChild(right);
+    }
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
+  }
+
+  init();
+</script>
+</body>
+</html>
